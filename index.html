@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title></title>
+  <link href="http://netdna.bootstrapcdn.com/twitter-bootstrap/2.3.2/css/bootstrap-combined.min.css" rel="stylesheet">
+  <style>
+    .pass * {
+      font-family: Andale Mono, monospace;
+      font-size: 16px;
+      line-height: 18px;
+    }
+    .pass {
+      border: 1px solid #000;
+      width: 900px;
+      margin: 10px auto;
+    }
+    .pass > * {
+      position: relative;
+      height: 340px;
+      padding: 10px;
+      padding-top: 20px;
+    }
+    .pass pre {
+      border: 0;
+      background: 0;
+      padding: 0;
+    }
+    .main {
+      width: 580px;
+    }
+    .receipt {
+      border-left: 1px solid #000;
+      width: 280px;
+      height: 340px;
+      float: right;
+    }
+    .right { float: right;}
+    .pass_label {
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+    .big {
+      font-weight: bold;
+      font-size: 40px;
+      line-height: 40px;
+    }
+    .mini_container {
+      width: 300px;
+      margin: 10px auto;
+    }
+    textarea {
+      height: 150px;
+    }
+    .pass {
+      /*display: none;*/
+    }
+    #qr {
+      height: 195px;
+      width:  195px;
+    }
+    @media print {
+      form {
+        display:none;
+      }
+      .pass {
+        display: block;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<script type="text/x-handlebars">
+  {{#with App.pass}}
+    <div class="mini_container">
+    <form>
+      <fieldset>
+        <legend>Boarding Pass Printer</legend>
+        <label>Full name:</label>
+        {{view Ember.TextField valueBinding="passenger"}}
+        <label>Games you want to play:</label>
+        {{view Ember.TextArea valueBinding="games"}}
+        <br/>
+        <button type="submit" class="btn print"><i class="icon-print"></i> Print</button>
+      </fieldset>
+    </form>
+  </div>
+
+  {{#if passengerPresent}}
+  <div class="pass">
+    <div class="receipt"><pre>
+<span class="big">TBP</span>
+
+<span class="pass_label">Passenger:</span>
+{{passenger}}
+
+<span class="pass_label">From:</span>
+{{from_abbreviation}}
+
+<span class="pass_label">To:</span>
+{{to_abbreviation}}
+
+<span class="pass_label">Flight:</span>
+<span class="big">{{receipt_flight_line}}</span>
+
+<span class="pass_label">Date:            Departs:</span>
+{{receipt_date_line}}
+  </pre></div>
+  <div class="main"><pre>
+<span class="big">Taco Boarding Pass</span>
+{{#if gamesPresent}}<div id="qr" class="right">{{{qr}}}</div>{{/if}}
+<span class="pass_label">Passenger:</span>
+{{passenger}}
+
+
+<span class="pass_label">From:                 Date:</span>
+{{from_line}}
+
+<span class="pass_label">To:                   Eats:</span>
+{{to_line}}
+
+
+<span class="pass_label">Flight:                                    Departs:</span>
+<span class="big">{{main_flight_line}}</span>
+  </pre></div>
+  </div>
+  {{/if}}
+  {{/with}}
+</script>
+<script src="http://code.jquery.com/jquery-1.10.2.min.js"></script>
+<script src="sprintf.min.js"></script>
+<script src="handlebars-1.0.0-rc.4.js"></script>
+<script src="ember-1.0.0-rc.6.js"></script>
+<script type="text/javascript" src="http://d-project.googlecode.com/svn/trunk/misc/qrcode/js/qrcode.js"></script>
+<script>
+
+  var create_qrcode = function(text, typeNumber, errorCorrectLevel, table) {
+    var qr = qrcode(typeNumber || 10, errorCorrectLevel || 'L');
+    qr.addData(text);
+    qr.make();
+
+    // return qr.createTableTag(3);
+    return qr.createImgTag(3);
+  };
+
+  App = Ember.Application.create({});
+  App.Pass = Ember.Object.extend({
+    passenger: "",
+    passengerPresent: function() {
+      return this.get("passenger").replace(/^\s+|\s+$/, "").length > 0;
+    }.property("passenger"),
+    from: "Indianapolis",
+    from_abbreviation: "IND",
+    from_line: function() {
+      return sprintf("%s - %-17s %-24s",
+        this.get("from_abbreviation"), this.get("from"),
+        this.get("date"));
+    }.property('from_abbreviation', 'from', 'date', 'eat'),
+    to: "Taco City",
+    to_abbreviation: "TC",
+    to_line: function() {
+      return sprintf("%s - %-18s %s", this.get("to_abbreviation"), this.get("to"), this.get("eat"));
+    }.property('to', 'to_abbreviation'),
+    zone: "Zone 3",
+    date: "02Jul",
+    depart: "551P",
+    eat: "600P",
+    flight: "1",
+    games: "",
+    gamesPresent: function() {
+      return this.get("games").replace(/^\s+|\s+$/, "").length > 0;
+    }.property("games"),
+    gamesClean: function() {
+      return this.get("games").replace(/^\s+|\s+$|/gm, "");
+    }.property("games"),
+    qr: function() {
+      return create_qrcode(this.get("gamesClean"));
+    }.property('games'),
+    receipt_date_line: function() {
+      return sprintf("%-10s %13s", this.get("date"), this.get("depart"))
+    }.property("date", "depart"),
+    receipt_flight_line: function() {
+      return sprintf("%s / %s", this.get("flight"), this.get("zone"));
+    }.property("flight", "zone"),
+    main_flight_line: function() {
+      return sprintf("%-18s %4s", this.get("receipt_flight_line"), this.get("depart"));
+    }.property("receipt_flight_line", "depart"),
+  });
+  App.pass = App.Pass.create({});
+
+  $(function() {
+    $('.print').click(function(e) {
+      window.print();
+    });
+  });
+
+</script>
+</body>
+</html>
